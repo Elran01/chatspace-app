@@ -1,0 +1,51 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the project
+    function isProjectOwner(projectId) {
+      return request.auth.uid == firestore.get(
+        /databases/(default)/documents/projects/$(projectId)).data.ownerId;
+    }
+    
+    // Helper function to check if user is a project collaborator
+    function isProjectCollaborator(projectId) {
+      return request.auth.uid in firestore.get(
+        /databases/(default)/documents/projects/$(projectId)).data.collaborators;
+    }
+    
+    // User profile images
+    match /users/{userId}/profile/{fileName} {
+      allow read: if true; // Profile images are publicly readable
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Project files - only accessible by project owners and collaborators
+    match /projects/{projectId}/files/{fileName} {
+      allow read, write: if isAuthenticated() && 
+        (isProjectOwner(projectId) || isProjectCollaborator(projectId));
+    }
+    
+    // Conversation attachments
+    match /projects/{projectId}/conversations/{conversationId}/{fileName} {
+      allow read, write: if isAuthenticated() && 
+        (isProjectOwner(projectId) || isProjectCollaborator(projectId));
+    }
+    
+    // Canvas document exports
+    match /projects/{projectId}/canvas/{canvasId}/exports/{fileName} {
+      allow read, write: if isAuthenticated() && 
+        (isProjectOwner(projectId) || isProjectCollaborator(projectId));
+    }
+    
+    // Temporary uploads - users can upload to their own temp folder
+    match /temp/{userId}/{fileName} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+  }
+}
