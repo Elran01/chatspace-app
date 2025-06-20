@@ -23,7 +23,9 @@ build
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+functions/**
 functions/
+**/functions/**
 
 # Development files
 .vscode/
